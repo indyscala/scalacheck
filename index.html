@@ -1,0 +1,687 @@
+<!--
+slidedeck: A modification of the Google IO 2012 HTML5 slide template
+URL: https://github.com/rmcgibbo/slidedeck
+
+Based on https://github.com/francescolaffi/elastic-google-io-slides, and
+ultimately:
+
+Google IO 2012 HTML5 Slide Template
+Authors: Eric Bidelman <ebidel@gmail.com>
+         Luke Mahe <lukem@google.com>
+URL: https://code.google.com/p/io-2012-slides
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title> Intro to ScalaCheck</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">-->
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+  <!--This one seems to work all the time, but really small on ipad-->
+  <!--<meta name="viewport" content="initial-scale=0.4">-->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+   <link rel="shortcut icon" href=" http://www.stanford.edu/favicon.ico"/> 
+  <link rel="stylesheet" media="all" href="theme/css/default.css">
+  <link rel="stylesheet" media="all" href="theme/css/custom.css">
+  <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="theme/css/phone.css">
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->
+  <script data-main="js/slides", src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.14/require.min.js"></script>
+
+
+  <!-- MathJax support  -->
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    showProcessingMessages: false,
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+      processEscapes: true
+    },
+    TeX: {
+      extensions: ["color.js"]
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+  </script>
+  <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <div style="display:hidden">
+  \[
+    \definecolor{data}{RGB}{18,110,213}
+    \definecolor{unknown}{RGB}{217,86,16}
+    \definecolor{learned}{RGB}{175,114,176}
+  \]
+  </div>
+
+</head>
+
+<body style="opacity: 0">
+
+<slides class="layout-widescreen">
+<slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+
+    <h1> Intro to ScalaCheck</h1>
+    <h2> Indy Scala, April 6, 2015</h2>
+    <p> Ross A. Baker<br/> Principal Cloud Engineer, CrowdStrike, @rossabaker</p>
+  </hgroup>
+</slide>
+
+
+<slide class="img-top-center" >
+  
+    <hgroup>
+      <h2>How do we test?</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><ul class="build">
+<li>We're all good developers here.</li>
+<li>We know it's not done until it's tested.</li>
+<li>But it's boring.</li>
+<li>And there's always pressure to deliver new features.</li>
+<li>And your tests miss corner cases anyway.</li>
+<li>Testing is hard.  Let's go watch basketball.</li>
+</ul></article>
+ 
+</slide>
+
+<slide class="img-top-center" >
+  
+    <hgroup>
+      <h2>The testing continuum</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><p><img src=figures/continuum.svg /></p>
+<ul class="build">
+<li>We are going to try to move right.</li>
+<li>Well, up to a point.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>¯\\(°_o)/¯-based testing</h2>
+      <h3>A review</h3>
+    </hgroup>
+    <article ><ul class="build">
+<li>I didn't have time to write this slide.</li>
+<li>Because I had a Sev 1 defect.</li>
+<li>You know, because I didn't test.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Example-based testing</h2>
+      <h3>A review</h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+"sqrt(c) * sqrt(c) == c by example" in {
+   sqrt(1.0) must be (1.0)
+   sqrt(9.0) must be (3.0)
+   sqrt(0.25) must be (0.5)
+}
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Property testing</h2>
+      <h3>A preview</h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+"sqrt(c) * sqrt(c) == c" in {
+  forAll { (d: Double) =>
+    (sqrt(d) * sqrt(d)) must be (d)
+  }
+}
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Interactive theorem proving</h2>
+      <h3>A hand wave</h3>
+    </hgroup>
+    <article ><pre class="prettyprint tiny" data-lang="isabelle">
+theorem sqrt2_not_rational:
+  "sqrt (real 2) ∉ ℚ"
+proof
+  assume "sqrt (real 2) ∈ ℚ"
+  then obtain m n :: nat where 
+    n_nonzero: "n ≠ 0" and sqrt_rat: "¦sqrt (real 2)¦ = real m / real n"
+    and lowest_terms: "gcd m n = 1" ..
+  from n_nonzero and sqrt_rat have "real m = ¦sqrt (real 2)¦ * real n" by simp
+  then have "real (m²) = (sqrt (real 2))² * real (n²)" by (auto simp add: power2_eq_square)
+  also have "(sqrt (real 2))² = real 2" by simp
+  also have "... * real (m²) = real (2 * n²)" by simp
+  finally have eq: "m² = 2 * n²" ..
+  hence "2 dvd m²" ..
+  with two_is_prime have dvd_m: "2 dvd m" by (rule prime_dvd_power_two)
+  then obtain k where "m = 2 * k" ..
+  with eq have "2 * n² = 2² * k²" by (auto simp add: power2_eq_square mult_ac)
+  hence "n² = 2 * k²" by simp
+  hence "2 dvd n²" ..
+  with two_is_prime have "2 dvd n" by (rule prime_dvd_power_two)
+  with dvd_m have "2 dvd gcd m n" by (rule gcd_greatest)
+  with lowest_terms have "2 dvd 1" by simp
+  thus False by arith
+qed
+</pre>
+
+<footer class="source">http://en.wikipedia.org/wiki/Isabelle_%28proof_assistant%29</footer></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Comparing the approaches</h2>
+      <h3>Rigor of proof</h3>
+    </hgroup>
+    <article ><ul>
+<li>¯\(°_o)/¯: proof by hope</li>
+<li>Examples: proof by example</li>
+<li>Properties: proof by lack of counterexample</li>
+<li>Theorems: proof by, like, math and stuff</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Comparing the approaches</h2>
+      <h3>Time to market</h3>
+    </hgroup>
+    <article ><ul>
+<li>¯\(°_o)/¯: fast</li>
+<li>Examples: moderate</li>
+<li>Properties: moderate</li>
+<li>Theorems: uh, we're still researching that</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Comparing the approaches</h2>
+      <h3>Can I hire for this?</h3>
+    </hgroup>
+    <article ><ul>
+<li>¯\(°_o)/¯: too easily</li>
+<li>Examples: easily</li>
+<li>Properties: maybe not, but you can learn it</li>
+<li>Theorems: uh, we're still researching that</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Comparing the approaches</h2>
+      <h3>Can I do this in Scala?</h3>
+    </hgroup>
+    <article ><ul>
+<li>¯\(°_o)/¯: of course!</li>
+<li>Examples: ScalaTest or Specs2</li>
+<li>Properties: ScalaCheck, optionally with ScalaTest or Specs2</li>
+<li>Theorems: Isabelle, I guess?</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Property testing</h2>
+      <h3>A deeper look</h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+"sqrt(c) * sqrt(c) == c" in {
+  forAll { (d: Double) => (sqrt(d) * sqrt(d)) must be (d) }
+}
+</pre>
+
+<ul class="build">
+<li>Says what we mean</li>
+<li>ScalaCheck generates <code>d</code> ...</li>
+<li>... a hundred times or more ...</li>
+<li>... and finds your flawed assumptions.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Our first bug</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+[info] - sqrt(c) * sqrt(c) == c property *** FAILED ***
+[info]   TestFailedException was thrown during property evaluation.
+[info]     Message: NaN was not equal to -3.9898976436050957E-94
+[info]     Location: (SqrtSpec.scala:19)
+[info]     Occurred when passed generated values (
+[info]       arg0 = -3.9898976436050957E-94
+[info]     )
+</pre>
+
+<ul class="build">
+<li>We forgot to do bounds checking.</li>
+<li>Our type system does not express the domain of the function. :(</li>
+<li>But our property can. :)</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>whenever</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+"sqrt(c) * sqrt(c) == c" in {
+  forAll { (d: Double) =>
+    whenever (d >= 0) {
+      (sqrt(d) * sqrt(d)) must be (d) 
+    }
+  }
+}
+</pre>
+
+<ul class="build">
+<li>Still says what we mean</li>
+<li>ScalaCheck still generates <code>d</code> ...</li>
+<li>... and discards <code>d</code> that don't fit.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Our second bug</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+[info] - sqrt(c) * sqrt(c) == c *** FAILED ***
+[info]   TestFailedException was thrown during property evaluation.
+[info]     Message: 2.2437640832940142E64 was not equal to 2.2437640832940145E64
+[info]     Location: (SqrtSpec.scala:20)
+[info]     Occurred when passed generated values (
+[info]       arg0 = 2.2437640832940145E64
+[info]     )
+</pre>
+
+<ul class="build">
+<li>Meh.  Close enough for government work.</li>
+<li>Our property overpromises.</li>
+<li>Let's fix it again.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>tolerance</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+"sqrt(c) * sqrt(c) == c" in {
+  def beWithinTolerance(d: Double) = {
+    be >= d * 0.999 and be <= d * 1.001
+  }
+
+  forAll { (d: Double) =>
+    whenever (d >= 0) {
+      (sqrt(d) * sqrt(d)) must beWithinTolerance(d)
+    }
+  }
+}
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>victory</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint">
+[info] SqrtSpec:
+[info] sqrt
+[info] - sqrt(c) * sqrt(c) == c by example
+[info] - sqrt(c) * sqrt(c) == c
+[info] ScalaTest
+[info] Run completed in 338 milliseconds.
+[info] Total number of tests run: 2
+[info] Suites: completed 1, aborted 0
+[info] Tests: succeeded 2, failed 0, canceled 0, ignored 0, pending 0
+[info] All tests passed.
+[info] Passed: Total 2, Failed 0, Errors 0, Passed 2
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Complex numbers</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+case class Complex(r: Double, i: Double) {
+  def *(c: Complex) = Complex(r * c.r, i * c.i)
+  def squared = this * this
+}
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Generating complex types</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+val genComplex: Gen[Complex] = for {
+  r <- arbitrary[Double]
+  i <- arbitrary[Double]
+} yield Complex(r, i)
+
+implicit val arbComplex: Arbitrary[Complex] =
+  Arbitrary(genComplex)
+</pre>
+
+<ul class="build">
+<li>Generate complex types (pun intended) from simple.</li>
+<li>ScalaCheck looks for an implicit <code>Arbitrary</code> instance.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Lots of arbitrary types built in</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><ul class="tinier">
+<li>AnyVal</li>
+<li>Array</li>
+<li>BigDecimal</li>
+<li>Bigint</li>
+<li>Boolean</li>
+<li>Byte</li>
+<li>Char</li>
+<li>Container</li>
+<li>Date</li>
+<li>Double</li>
+<li>Either</li>
+<li>Float</li>
+<li>Function{1,2,3,4,5}</li>
+<li>ImmutableMap</li>
+<li>Int</li>
+<li>Long</li>
+<li>MutableMap</li>
+<li>Number</li>
+<li>Option</li>
+<li>Short</li>
+<li>String</li>
+<li>Throwable</li>
+<li>Tuple{2,3,4,5,6,7,8,9}</li>
+<li>Unit</li>
+<ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Testing our complex number</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+test("c * c == c.squared") in {
+  forAll { (c: Complex) =>
+    (c * c) must be (c.squared)
+  }
+}
+</pre>
+
+<ul class="build">
+<li>ScalaCheck really shines checking relations between methods.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Success</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+[info] ComplexSpec:
+[info] - c * c == c.squared
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Lies, damned lies, and property testing</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+scala> Complex(0,1) * Complex(0,1)
+res1: org.indyscala.scalacheck.Complex = Complex(0.0,1.0)
+</pre>
+
+<ul>
+<li>Well, that's not right at all.</li>
+<li><mathjax>$i * i = -1$</mathjax> </li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>How can we fix this?</h2>
+      <h3>Add an example</h3>
+    </hgroup>
+    <article ><pre class="prettyprint">
+[info] ComplexSpec:
+[info] complex
+[info] - c * c == c.squared
+[info] - i * i == -1 *** FAILED ***
+[info]   Complex(0.0,1.0) was not equal to Complex(1.0,0.0) (ComplexSpec.scala:38)
+</pre>
+
+<ul class="build">
+<li>You don't have to leave example testing behind.</li>
+<li>Examples are a fine way to test your properties.</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>A corrected Complex</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+case class Complex(r: Double, i: Double) {
+  def *(c: Complex) = Complex(r * c.r - i * c.i, r * c.i - i * c.r)
+  def squared = this * this
+}
+</pre></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>We found a boundary condition</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint">
+[info] ComplexSpec:
+[info] - c * c == c.squared *** FAILED ***
+[info]   TestFailedException was thrown during property evaluation.
+[info]     Message: Complex(NaN,NaN) was not equal to Complex(NaN,NaN)
+[info]     Location: (ComplexSpec.scala:26)
+[info]     Occurred when passed generated values (
+[info]       arg0 = Complex(1.672687821964044E279,7.301512514377243E305)
+[info]     )
+[info] - i * i == -1
+</pre>
+
+<ul class="build">
+<li>We could fix that by putting a <code>whenever</code> on our values</li>
+<li>Or we could switch our represenation to big decimals</li>
+<li>Either way, now we know how robust it is</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Hey, doesn't our test look like the implementation?</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><pre class="prettyprint" data-lang="scala">
+def squared = this * this
+</pre>
+
+<pre class="prettyprint" data-lang="scala">
+(c * c) must be (c.squared)
+</pre>
+
+<ul class="build">
+<li>It's a trap: it contributed to our false positive</li>
+<li>It's useful: it's a regression suite if you optimize the impl</li>
+<li>Testing is still an art</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>I'm only dabbling in Scala.</h2>
+      <h3>Most major languages have a port!</h3>
+    </hgroup>
+    <article ><ul class="tiniest">
+<li>C</li>
+<li>C++</li>
+<li>Chicken Scheme</li>
+<li>Clojure</li>
+<li>Common Lisp</li>
+<li>D</li>
+<li>Elm</li>
+<li>Erlang</li>
+<li>F#</li>
+<li>Factor</li>
+<li>Haskell</li>
+<li>Io</li>
+<li>Java</li>
+<li>JavaScript</li>
+<li>Node.js</li>
+<li>Objective-C</li>
+<li>OCaml</li>
+<li>Perl</li>
+<li>Prolog</li>
+<li>Python</li>
+<li>R</li>
+<li>Ruby</li>
+<li>Scheme</li>
+<li>Smalltalk</li>
+<li>Standard ML</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Choose Your Own Adventure</h2>
+      <h3>If time permits</h3>
+    </hgroup>
+    <article ><ul>
+<li>Exercise: Reimplement sqrt to return a Complex</li>
+<li>Dive deeper into generators</li>
+<li>Look at how cats tests with Discipline</li>
+<li>Go watch basketball</li>
+</ul></article>
+ 
+</slide>
+
+<slide  >
+  
+    <hgroup>
+      <h2>Some further reading</h2>
+      <h3></h3>
+    </hgroup>
+    <article ><ul>
+<li><a href="http://www.slideshare.net/kelseyinnis/scalacheck-2-41828057">I Dream of Gen'ning</a></li>
+<li><a href="http://scalacheck.org/files/scaladays2014/">Testing Stateful Systems with ScalaCheck</a></li>
+</ul></article>
+ 
+</slide>
+
+
+<slide class="thank-you-slide segue nobackground">
+  <!-- <aside class="gdbar right"><img src="images/google_developers_icon_128.png"></aside> -->
+  <article class="flexbox vleft auto-fadein">
+    <h2> Thanks everyone!</h2>
+    <p> And especially these people:</p>
+  </article>
+  <p data-config-contact class="auto-fadein"> <span>hosts</span> E-gineering<br/> <span>meetup</span> Brad Fritz of Fewer Hassles</p>
+  </p>
+</slide>
+
+<slide class="backdrop"></slide>
+
+</slides>
+
+<script>
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-XXXXXXXX-1']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+</script>
+
+<!--[if IE]>
+  <script src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+  <script>CFInstall.check({mode: 'overlay'});</script>
+<![endif]-->
+</body>
+</html>
